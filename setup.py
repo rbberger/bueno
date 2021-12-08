@@ -24,6 +24,11 @@ if sys.version_info < __min_py_version__:
     sys.exit('!!! bueno Requires Python >= {} !!!'.format(__min_py_version__))
 
 
+def _get_3rd_party_path(name, version):
+    path = os.path.join(os.getcwd(), '3rd-party', name)
+    return F'file://localhost/{path}/{version}.tar.gz'
+
+
 def package_setup(package_name, package_vers):
     '''
     Package setup routine.
@@ -39,7 +44,9 @@ def package_setup(package_name, package_vers):
         packages=find_packages(),
         # Package Requirements
         install_requires=[
-            'pyyaml'
+            'pyyaml',
+            F'pika @ {_get_3rd_party_path("pika", "1.2.0")}'
+
         ],
         scripts=[
             'bin/bueno'
