@@ -36,7 +36,7 @@ def package_setup(package_name, package_vers):
     setup(
         name=package_name,
         version=package_vers,
-        description='bueno: Utilities for Automated Benchmarking',
+        description='bueno: Well-Provenanced Benchmarking',
         author='Samuel K. Gutierrez',
         author_email='samuel@lanl.gov',
         license='BSD 3-Clause',
