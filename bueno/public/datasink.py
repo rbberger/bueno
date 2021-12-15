@@ -19,9 +19,15 @@ from typing import (
     Union
 )
 
+import os
 import socket
 import ssl
 import time
+
+from urllib.parse import urlencode, quote_plus
+
+import pika
+from pika import exceptions as pikaexcepts
 
 from bueno.public import logger
 from bueno.public import utils
@@ -171,6 +177,99 @@ class InfluxDBMeasurement(Measurement):
             self._values(),
             self.time
         )
+
+
+class TLSConfiguration:
+    '''
+    A straightforward Transport Layer Security (TLS) configuration container.
+    '''
+    def __init__(
+        self,
+        certfile: str,
+        keyfile: str,
+        cafile: Optional[str] = None
+    ) -> None:
+        self.certfile = certfile
+        self.keyfile = keyfile
+        self.cafile = cafile
+
+        for file in [self.certfile, self.keyfile, self.cafile]:
+            if file is None:
+                continue
+            if not os.path.exists(file):
+                fnf = '{} does not exist'
+                raise RuntimeError(fnf.format(file))
+
+
+class AMQP091BlockingClient:  # pylint: disable=too-many-instance-attributes
+    '''
+    A straightforward AMQP 0-9-1 blocking client interface that ultimately wraps
+    Pika.
+    '''
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        amqp_broker: str,
+        queue_name: str,
+        exchange: str,
+        routing_key: str,
+        tls_config: TLSConfiguration
+    ) -> None:
+        self.amqp_broker = amqp_broker
+        self.queue_name = queue_name
+        self.exchange = exchange
+        self.routing_key = routing_key
+        self.tls_config = tls_config
+
+        self.url_options = self._url_encode_options()
+        self.url = F'{amqp_broker}{self.url_options}'
+
+        url_params = pika.URLParameters(self.url)
+
+        self.connection = pika.BlockingConnection(url_params)
+        self.channel = self.connection.channel()
+        self.channel.confirm_delivery()
+
+        self.channel.queue_declare(
+            queue=queue_name
+        )
+
+    def _url_encode_tls(self) -> str:
+        ssl_options = {
+            'certfile': self.tls_config.certfile,
+            'keyfile': self.tls_config.keyfile
+        }
+        if self.tls_config.cafile is not None:
+            ssl_options['ca_certs'] = self.tls_config.cafile
+
+        return urlencode({'ssl_options': ssl_options}, quote_via=quote_plus)
+
+    def _url_encode_options(self) -> str:
+        options = {
+            'connection_attempts': 5,
+            'heartbeat': 360,  # In seconds
+            'blocked_connection_timeout': 300  # In seconds
+        }
+        optenc = urlencode({'ssl_options': options}, quote_via=quote_plus)
+        tlsenc = self._url_encode_tls()
+
+        return F'{optenc}{tlsenc}'
+
+    def send(self, measurement: Measurement, verbose: bool = False) -> None:
+        '''
+        Sends the contexts of measurement to the MQ broker.
+        '''
+        msg = measurement.data()
+        try:
+            self.channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=self.routing_key,
+                body=msg,
+                mandatory=True
+            )
+            if verbose:
+                logger.log(F'{type(self).__name__}:send({msg.rstrip()})')
+        except pikaexcepts.UnroutableError:
+            logger.log(F'Error sending the following message: {msg}')
 
 
 class TelegrafClient:
