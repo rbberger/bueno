@@ -21,13 +21,10 @@ from typing import (
 
 import socket
 import ssl
-import subprocess  # nosec
 import time
 
 from bueno.public import logger
 from bueno.public import utils
-
-MaybePopen = Optional[subprocess.Popen]
 
 
 class Table:
