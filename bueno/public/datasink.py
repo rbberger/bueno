@@ -19,7 +19,6 @@ from typing import (
     Union
 )
 
-import os
 import socket
 import ssl
 import subprocess  # nosec
@@ -92,61 +91,6 @@ class Table:
             logger.log(rowf.format(row))
 
 
-class TelegrafClientAgent:
-    '''
-    A thin wrapper for telegraf client agent management.
-    '''
-    def __init__(self, exe: str, config: str, verbose: bool = False) -> None:
-        self.verbose = verbose
-        self.exe = exe
-        self.config = config
-        self.tele_process: MaybePopen = None
-
-        fnf = '{} does not exist'
-        if not os.path.exists(exe):
-            raise RuntimeError(fnf.format(exe))
-        if not os.path.exists(config):
-            raise RuntimeError(fnf.format(config))
-
-    @staticmethod
-    def _sleep(seconds: int) -> None:
-        '''
-        Sleeps while yielding a little, too.
-        '''
-        for _ in range(seconds):
-            time.sleep(0.5)
-            os.sched_yield()
-            time.sleep(0.5)
-            os.sched_yield()
-
-    def __del__(self) -> None:
-        # Hack to give the subprocess a little time to ingest outstanding data.
-        TelegrafClientAgent._sleep(5)
-        self.stop()
-
-    def start(self) -> None:
-        '''
-        Starts the Telegraf client agent. Raises a RuntimeError on failure.
-        '''
-        cmd = [self.exe, '--config', self.config]
-        self.tele_process = subprocess.Popen(  # nosec
-            cmd,
-            shell=False,
-            stdout=None if self.verbose else subprocess.DEVNULL,
-            stderr=None if self.verbose else subprocess.DEVNULL
-        )
-        # Hack to give the subprocess a little time to startup.
-        TelegrafClientAgent._sleep(5)
-
-    def stop(self) -> None:
-        '''
-        Stops the Telegraf client agent.
-        '''
-        if self.tele_process is not None:
-            self.tele_process.terminate()
-            self.tele_process = None
-
-
 class Measurement(ABC):
     '''
    Abstract measurement type.
@@ -179,9 +123,9 @@ class InfluxDBMeasurement(Measurement):
         Formats a key for the line protocol.
         '''
         if isinstance(item, str):
-            item = item.replace(',', '\,')  # noqa: W605 pylint: disable=W1401
-            item = item.replace(' ', '\ ')  # noqa: W605 pylint: disable=W1401
-            item = item.replace('=', '\=')  # noqa: W605 pylint: disable=W1401
+            item = item.replace(',', r'\,')
+            item = item.replace(' ', r'\ ')
+            item = item.replace('=', r'\=')
 
         return str(item)
 
