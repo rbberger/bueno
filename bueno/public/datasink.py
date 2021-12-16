@@ -19,6 +19,7 @@ from typing import (
     Union
 )
 
+import logging
 import socket
 import ssl
 import time
@@ -190,9 +191,7 @@ class TLSConfig:
         self.keyfile = keyfile
         self.cafile = cafile
 
-        self.ssl_context = ssl.create_default_context(
-            cafile=self.cafile
-        )
+        self.ssl_context = ssl.SSLContext()
 
         self.ssl_context.load_cert_chain(
             self.certfile,
@@ -209,7 +208,7 @@ class RabbitMQConnectionParams:
         host: str,
         port: int,
         vhost: str = '/',
-        connection_attempts: int = 5,
+        connection_attempts: int = 2,
         heartbeat: int = 360,                   # In seconds
         blocked_connection_timeout: int = 300,  # In seconds
         tls_config: TLSConfig = None
@@ -242,26 +241,28 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
 
         connp = self.conn_params
 
+        logging.getLogger("pika").propagate = False
+
         ssl_options = None
         if connp.tls_config is not None:
             ssl_context = connp.tls_config.ssl_context
-            ssl_options = pika.SSLOptions(ssl_context, 'localhost')
+            ssl_options = pika.SSLOptions(ssl_context, connp.host)
 
+        credentials = pika.credentials.ExternalCredentials()
         connection_params = pika.ConnectionParameters(
+            host=connp.host,
             port=connp.port,
+            virtual_host=connp.vhost,
             connection_attempts=connp.connection_attempts,
             heartbeat=connp.heartbeat,
             blocked_connection_timeout=connp.blocked_connection_timeout,
+            credentials=credentials,
             ssl_options=ssl_options
         )
 
         self.connection = pika.BlockingConnection(connection_params)
         self.channel = self.connection.channel()
         self.channel.confirm_delivery()
-
-        self.channel.queue_declare(
-            queue=queue_name
-        )
 
     def send(self, measurement: Measurement, verbose: bool = False) -> None:
         '''
