@@ -19,12 +19,9 @@ from typing import (
     Union
 )
 
-import os
 import socket
 import ssl
 import time
-
-from urllib.parse import urlencode, quote_plus
 
 import pika
 from pika import exceptions as pikaexcepts
@@ -179,7 +176,7 @@ class InfluxDBMeasurement(Measurement):
         )
 
 
-class TLSConfiguration:
+class TLSConfig:
     '''
     A straightforward Transport Layer Security (TLS) configuration container.
     '''
@@ -193,66 +190,78 @@ class TLSConfiguration:
         self.keyfile = keyfile
         self.cafile = cafile
 
-        for file in [self.certfile, self.keyfile, self.cafile]:
-            if file is None:
-                continue
-            if not os.path.exists(file):
-                fnf = '{} does not exist'
-                raise RuntimeError(fnf.format(file))
+        self.ssl_context = ssl.create_default_context(
+            cafile=self.cafile
+        )
+
+        self.ssl_context.load_cert_chain(
+            self.certfile,
+            self.keyfile
+        )
 
 
-class AMQP091BlockingClient:  # pylint: disable=too-many-instance-attributes
+class RabbitMQConnectionParams:
+    '''
+    A straightforward RabbitMQ broker configuration container.
+    '''
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        host: str,
+        port: int,
+        vhost: str = '/',
+        connection_attempts: int = 5,
+        heartbeat: int = 360,                   # In seconds
+        blocked_connection_timeout: int = 300,  # In seconds
+        tls_config: TLSConfig = None
+    ) -> None:
+        self.host = host
+        self.port = port
+        self.vhost = vhost
+        self.connection_attempts = connection_attempts
+        self.heartbeat = heartbeat
+        self.blocked_connection_timeout = blocked_connection_timeout
+        self.tls_config = tls_config
+
+
+class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
     '''
     A straightforward AMQP 0-9-1 blocking client interface that ultimately wraps
     Pika.
     '''
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
-        amqp_broker: str,
+        conn_params: RabbitMQConnectionParams,
         queue_name: str,
         exchange: str,
         routing_key: str,
-        tls_config: TLSConfiguration
     ) -> None:
-        self.amqp_broker = amqp_broker
+        self.conn_params = conn_params
         self.queue_name = queue_name
         self.exchange = exchange
         self.routing_key = routing_key
-        self.tls_config = tls_config
 
-        self.url_options = self._url_encode_options()
-        self.url = F'{amqp_broker}{self.url_options}'
+        connp = self.conn_params
 
-        url_params = pika.URLParameters(self.url)
+        ssl_options = None
+        if connp.tls_config is not None:
+            ssl_context = connp.tls_config.ssl_context
+            ssl_options = pika.SSLOptions(ssl_context, 'localhost')
 
-        self.connection = pika.BlockingConnection(url_params)
+        connection_params = pika.ConnectionParameters(
+            port=connp.port,
+            connection_attempts=connp.connection_attempts,
+            heartbeat=connp.heartbeat,
+            blocked_connection_timeout=connp.blocked_connection_timeout,
+            ssl_options=ssl_options
+        )
+
+        self.connection = pika.BlockingConnection(connection_params)
         self.channel = self.connection.channel()
         self.channel.confirm_delivery()
 
         self.channel.queue_declare(
             queue=queue_name
         )
-
-    def _url_encode_tls(self) -> str:
-        ssl_options = {
-            'certfile': self.tls_config.certfile,
-            'keyfile': self.tls_config.keyfile
-        }
-        if self.tls_config.cafile is not None:
-            ssl_options['ca_certs'] = self.tls_config.cafile
-
-        return urlencode({'ssl_options': ssl_options}, quote_via=quote_plus)
-
-    def _url_encode_options(self) -> str:
-        options = {
-            'connection_attempts': 5,
-            'heartbeat': 360,  # In seconds
-            'blocked_connection_timeout': 300  # In seconds
-        }
-        optenc = urlencode({'ssl_options': options}, quote_via=quote_plus)
-        tlsenc = self._url_encode_tls()
-
-        return F'{optenc}{tlsenc}'
 
     def send(self, measurement: Measurement, verbose: bool = False) -> None:
         '''
