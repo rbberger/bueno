@@ -244,9 +244,9 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
         '''
         Sends the contexts of measurement to the MQ server.
         '''
-        # Establish the connection for each send. We do this because of the main
-        # thread creates an instance and we do that there, then long-running
-        # jobs may cause timeouts. This gets around that problem.
+        # Establish the connection for each send. We do this because if the main
+        # thread creates an instance and we initialize a connection there, then
+        # long-running jobs may cause timeouts. This gets around that problem.
         connp = self.conn_params
         ssl_options = None
         if connp.tls_config is not None:
