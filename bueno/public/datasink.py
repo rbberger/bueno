@@ -233,6 +233,7 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
         queue_name: str,
         exchange: str,
         routing_key: str,
+        verbose: bool = False,
     ) -> None:
         self.conn_params = conn_params
         self.queue_name = queue_name
@@ -241,7 +242,7 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
 
         connp = self.conn_params
 
-        logging.getLogger("pika").propagate = False
+        logging.getLogger("pika").propagate = verbose
 
         ssl_options = None
         if connp.tls_config is not None:
