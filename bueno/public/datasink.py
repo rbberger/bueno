@@ -23,7 +23,7 @@ import logging
 import ssl
 import time
 
-import pika
+import pika  # type: ignore
 
 from bueno.public import logger
 from bueno.public import utils
@@ -209,7 +209,7 @@ class RabbitMQConnectionParams:
         connection_attempts: int = 2,
         heartbeat: int = 360,                   # In seconds
         blocked_connection_timeout: int = 300,  # In seconds
-        tls_config: TLSConfig = None
+        tls_config: Optional[TLSConfig] = None
     ) -> None:
         self.host = host
         self.port = port
@@ -225,7 +225,7 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
     A straightforward AMQP 0-9-1 blocking client interface that ultimately wraps
     Pika.
     '''
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         conn_params: RabbitMQConnectionParams,
         queue_name: str,
