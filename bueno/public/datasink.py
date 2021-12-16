@@ -20,12 +20,10 @@ from typing import (
 )
 
 import logging
-import socket
 import ssl
 import time
 
 import pika
-from pika import exceptions as pikaexcepts
 
 from bueno.public import logger
 from bueno.public import utils
@@ -240,10 +238,17 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
         self.exchange = exchange
         self.routing_key = routing_key
 
-        connp = self.conn_params
-
+        # Enable pika logging based on verbosity level.
         logging.getLogger("pika").propagate = verbose
 
+    def send(self, measurement: Measurement, verbose: bool = False) -> None:
+        '''
+        Sends the contexts of measurement to the MQ server.
+        '''
+        # Establish the connection for each send. We do this because of the main
+        # thread creates an instance and we do that there, then long-running
+        # jobs may cause timeouts. This gets around that problem.
+        connp = self.conn_params
         ssl_options = None
         if connp.tls_config is not None:
             ssl_context = connp.tls_config.ssl_context
@@ -261,85 +266,21 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
             ssl_options=ssl_options
         )
 
-        self.connection = pika.BlockingConnection(connection_params)
-        self.channel = self.connection.channel()
-        self.channel.confirm_delivery()
+        with pika.BlockingConnection(connection_params) as connection:
+            channel = connection.channel()
+            channel.confirm_delivery()
+            msg = measurement.data()
+            try:
+                channel.basic_publish(
+                    exchange=self.exchange,
+                    routing_key=self.routing_key,
+                    body=msg,
+                    mandatory=True
+                )
+                if verbose:
+                    logger.log(F'{type(self).__name__} sent: ({msg.rstrip()})')
+            except pika.exceptions.UnroutableError:
+                logger.log(F'Error sending the following message: {msg}')
 
-    def send(self, measurement: Measurement, verbose: bool = False) -> None:
-        '''
-        Sends the contexts of measurement to the MQ broker.
-        '''
-        msg = measurement.data()
-        try:
-            self.channel.basic_publish(
-                exchange=self.exchange,
-                routing_key=self.routing_key,
-                body=msg,
-                mandatory=True
-            )
-            if verbose:
-                logger.log(F'{type(self).__name__}:send({msg.rstrip()})')
-        except pikaexcepts.UnroutableError:
-            logger.log(F'Error sending the following message: {msg}')
-
-
-class TelegrafClient:
-    '''
-    A straightforward client interface for interacting with a Telegraf daemon.
-    '''
-    def __init__(
-        self,
-        ssl_key: str,
-        ssl_cert: str,
-        host: str = 'localhost',
-        port: int = 5555
-    ) -> None:
-        self.host = host
-        self.port = port
-        self.ssl_key = ssl_key
-        self.ssl_cert = ssl_cert
-        self.sock: Optional[socket.socket] = None
-        self.ssock: Optional[ssl.SSLSocket] = None
-
-        self._connect()
-
-    def __del__(self) -> None:
-        if self.sock is not None:
-            self.sock.close()
-        if self.ssock is not None:
-            self.ssock.close()
-
-    def _connect(self) -> None:
-        '''
-        Private connection.
-        '''
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(10)
-
-        sslctx = ssl.SSLContext()
-        sslctx.load_cert_chain(certfile=self.ssl_cert, keyfile=self.ssl_key)
-
-        self.ssock = sslctx.wrap_socket(self.sock)
-
-        try:
-            self.ssock.connect((self.host, self.port))
-        except Exception as exception:
-            ers = 'Cannot connect to Telegraf client agent'
-            raise RuntimeError(ers) from exception
-
-    def send(self, measurement: Measurement, verbose: bool = False) -> None:
-        '''
-        Sends the contexts of measurement to the Telegraf client agent.
-        '''
-        try:
-            # To silence mypy warnings
-            assert self.ssock is not None  # nosec
-            mdata = measurement.data()
-            if verbose:
-                logger.log(F'{type(self).__name__}:send({mdata.rstrip()})')
-            self.ssock.write(mdata.encode('utf-8'))
-        except Exception as exception:
-            ers = 'Sending data to Telegraf client agent failed'
-            raise RuntimeError(ers) from exception
 
 # vim: ft=python ts=4 sts=4 sw=4 expandtab
