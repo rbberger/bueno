@@ -238,8 +238,9 @@ class RabbitMQBlockingClient:  # pylint: disable=too-many-instance-attributes
         self.exchange = exchange
         self.routing_key = routing_key
 
-        # Enable pika logging based on verbosity level.
-        logging.getLogger("pika").propagate = verbose
+        # Set pika logging level based on verbosity level.
+        if not verbose:
+            logging.getLogger("pika").setLevel(logging.WARNING)
 
     def send(self, measurement: Measurement, verbose: bool = False) -> None:
         '''
