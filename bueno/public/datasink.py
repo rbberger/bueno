@@ -182,12 +182,10 @@ class TLSConfig:
     def __init__(
         self,
         certfile: str,
-        keyfile: str,
-        cafile: Optional[str] = None
+        keyfile: str
     ) -> None:
         self.certfile = certfile
         self.keyfile = keyfile
-        self.cafile = cafile
 
         self.ssl_context = ssl.SSLContext()
 
