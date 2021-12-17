@@ -82,9 +82,9 @@ python3 -m pip uninstall bueno
 ```
 
 ## Quick Start
-After installation, here are some quick examples for getting started.
-The following is the *hello world* equivalent of a bueno run script.
-This is a simplified version of the example described in more detail
+Once you have installed bueno, you can give the following examples a try.  The
+following is the bueno run script *hello world*.  This is a simplified version
+of the example described in more detail
 [here](https://lanl.github.io/bueno/html/bueno-run-getting-started.html).
 ```python
 # hello.py
