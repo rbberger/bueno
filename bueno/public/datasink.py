@@ -6,9 +6,6 @@
 # top-level directory of this distribution for more information.
 #
 
-# pylint: disable=invalid-name
-# pylint: disable=no-self-use
-
 '''
 Convenience data sinks.
 '''
@@ -157,7 +154,10 @@ class _InfluxLineProtocolParser():
         '''
 
     class _Transformer(lark.Transformer):  # type: ignore
-        def INFLUX_NAME(self, tok: lark.Token) -> lark.Token:
+        def INFLUX_NAME(  # pylint: disable=invalid-name,no-self-use
+            self,
+            tok: lark.Token
+        ) -> lark.Token:
             '''
             Handles INFLUX_NAME tokens, making sure they conform to the
             protocol's requirements.

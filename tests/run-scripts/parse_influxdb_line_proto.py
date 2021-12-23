@@ -12,11 +12,11 @@
 Test 1 for InfluxDB line protocol parser.
 '''
 
+import lark
+
 from bueno.public import experiment
 from bueno.public import logger
 from bueno.public import datasink
-
-import lark
 
 
 def main(_):
