@@ -45,8 +45,8 @@ def package_setup(package_name, package_vers):
         # Package Requirements
         install_requires=[
             'pyyaml',
-            F'pika @ {_get_3rd_party_path("pika", "1.2.0")}'
-
+            F'pika @ {_get_3rd_party_path("pika", "1.2.0")}',
+            F'lark @ {_get_3rd_party_path("lark", "1.0.0")}'
         ],
         scripts=[
             'bin/bueno'

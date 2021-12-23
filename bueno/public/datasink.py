@@ -6,6 +6,9 @@
 # top-level directory of this distribution for more information.
 #
 
+# pylint: disable=invalid-name
+# pylint: disable=no-self-use
+
 '''
 Convenience data sinks.
 '''
@@ -24,6 +27,7 @@ import ssl
 import time
 
 import pika  # type: ignore
+import lark
 
 from bueno.public import logger
 from bueno.public import utils
@@ -92,13 +96,94 @@ class Table:
 
 class Measurement(ABC):
     '''
-   Abstract measurement type.
+    Abstract measurement type.
     '''
+    def __init__(self, verify_data: bool = False):
+        self.verify_data = verify_data
+
     @abstractmethod
     def data(self) -> str:
         '''
         Returns measurement data as string following a given line protocol.
         '''
+
+
+class _InfluxLineProtocolParser():
+    def __init__(self) -> None:
+        self.grammar = '''
+            line: name SPACE fields SPACE UNIX_TIME NEWLINE
+                | name COMMA tags SPACE fields SPACE UNIX_TIME NEWLINE
+
+            tags: tag
+                | tag COMMA tags
+
+            tag: tag_key EQUALS tag_value
+
+            fields: field
+                  | field COMMA fields
+
+            field: field_key EQUALS field_value
+
+            name: INFLUX_NAME
+
+            tag_key: INFLUX_NAME
+            tag_value: STRING
+
+            field_key: INFLUX_NAME
+            field_value: SIGNED_FLOAT
+                       | SIGNED_INT
+                       | DOUBLE_QUOTED_STRING
+                       | BOOL
+
+            UNIX_TIME: SIGNED_INT
+
+            BOOL: "True"
+                | "False"
+            COMMA: ","
+            EQUALS: "="
+            SPACE: " "
+            INFLUX_NAME: STRING
+            NEWLINE: LF
+            STRING: /[a-zA-Z0-9_.-]{2,}/
+            SINGLE_QUOTED_STRING: /'[^']*'/
+            DOUBLE_QUOTED_STRING: /"[^"]*"/
+            QUOTED_STRING: SINGLE_QUOTED_STRING
+                         | DOUBLE_QUOTED_STRING
+
+            %import common.CNAME
+            %import common.INT
+            %import common.LF
+            %import common.SIGNED_INT
+            %import common.SIGNED_FLOAT
+        '''
+
+    class _Transformer(lark.Transformer):  # type: ignore
+        def INFLUX_NAME(self, tok: lark.Token) -> lark.Token:
+            '''
+            Handles INFLUX_NAME tokens, making sure they conform to the
+            protocol's requirements.
+            '''
+            stok = str(tok)
+            if stok.startswith('_'):
+                line = tok.line
+                col = tok.column
+                ers = f'At line {line}, column {col}: Influx names ' \
+                      f'cannot start with an underscore: {stok}'
+                raise SyntaxError(ers)
+            return tok
+
+    def parse(self, istr: str) -> None:
+        '''
+        Attempts to parse the provided input. Raises an exception if parsing
+        fails.
+        '''
+        parser = lark.Lark(
+            self.grammar,
+            parser='lalr',
+            start='line',
+            transformer=_InfluxLineProtocolParser._Transformer()
+        )
+        parser.parse(istr)
 
 
 class InfluxDBMeasurement(Measurement):
@@ -109,8 +194,10 @@ class InfluxDBMeasurement(Measurement):
         self,
         measurement: str,
         values: Dict[str, Union[str, int, float, bool]],
-        tags: Optional[Dict[str, str]] = None
+        tags: Optional[Dict[str, str]] = None,
+        verify_data: bool = False
     ) -> None:
+        super().__init__(verify_data)
         self.time = str(int(time.time()) * 1000000000)
         self.measurement = utils.chomp(measurement)
         self.values = values
@@ -166,13 +253,18 @@ class InfluxDBMeasurement(Measurement):
     def data(self) -> str:
         '''
         Returns measurement data as string following InfluxDB line protocol.
+        Raises an exception if data verification is enabled and the data do not
+        adhere to the InfluxDB line protocol.
         '''
-        return '{}{} {} {}\n'.format(
+        result = '{}{} {} {}\n'.format(
             self.measurement,
             ',' + self._tags() if self.tags else '',
             self._values(),
             self.time
         )
+        if self.verify_data:
+            _InfluxLineProtocolParser().parse(result)
+        return result
 
 
 class TLSConfig:
