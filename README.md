@@ -62,7 +62,7 @@ automation.
 In a terminal perform the following.
 ```shell
 cd bueno # The directory in which setup.py is located.
-python3 -m pip install --user .
+python3 -m pip install --user --force-reinstall .
 ```
 Add bueno's installation prefix to `PATH`:
 ```shell
@@ -79,6 +79,18 @@ Now, the `bueno` command should be available for use.
 ### User Uninstallation with pip
 ```shell
 python3 -m pip uninstall bueno
+```
+Or, for a completely clean uninstall (including dependencies)
+```shell
+# If needed, install pip-autoremove
+python3 -m pip install --user pip-autoremove
+pip-autoremove bueno
+```
+
+### Developer Mode Installation With pip
+```shell
+cd bueno # The directory in which setup.py is located.
+python3 -m pip install --user --force-reinstall -e .
 ```
 
 ## Quick Start
