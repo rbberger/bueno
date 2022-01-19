@@ -147,7 +147,6 @@ class _InfluxLineProtocolParser():
             QUOTED_STRING: SINGLE_QUOTED_STRING
                          | DOUBLE_QUOTED_STRING
 
-            %import common.INT
             %import common.LF
             %import common.SIGNED_INT
             %import common.SIGNED_FLOAT
