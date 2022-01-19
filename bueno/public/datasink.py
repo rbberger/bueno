@@ -141,7 +141,7 @@ class _InfluxLineProtocolParser():
             SPACE: " "
             INFLUX_NAME: STRING
             NEWLINE: LF
-            STRING: /[a-zA-Z0-9_.-]{2,}/
+            STRING: /[a-zA-Z0-9_.-]{1,}/
             SINGLE_QUOTED_STRING: /'[^']*'/
             DOUBLE_QUOTED_STRING: /"[^"]*"/
             QUOTED_STRING: SINGLE_QUOTED_STRING

@@ -82,7 +82,6 @@ def main(_):
     bad_tags = [
         None,
         {'_tk0': "tk0"},
-        {'tk0': 0},
         {'tk0': 'tv0:tv1=tv2'}
     ]
 
