@@ -1,5 +1,5 @@
 #
-# Copyright (c)      2021 Triad National Security, LLC
+# Copyright (c) 2021-2022 Triad National Security, LLC
 #                         All rights reserved.
 #
 # This file is part of the bueno project. See the LICENSE file at the
@@ -124,10 +124,12 @@ class _InfluxLineProtocolParser():
             name: INFLUX_NAME
 
             tag_key: INFLUX_NAME
-            tag_value: CNAME
+
+            tag_value: STRING
                      | SIGNED_INT
 
             field_key: INFLUX_NAME
+
             field_value: SIGNED_FLOAT
                        | SIGNED_INT
                        | DOUBLE_QUOTED_STRING
@@ -135,19 +137,27 @@ class _InfluxLineProtocolParser():
 
             UNIX_TIME: SIGNED_INT
 
+            STRING: ("_"|"."|"-"|LETTER|DIGIT)+
+
             BOOL: "True"
                 | "False"
+
             COMMA: ","
+
             EQUALS: "="
+
             SPACE: " "
-            INFLUX_NAME: CNAME
+
+            INFLUX_NAME: (LETTER|DIGIT) STRING*
+
             NEWLINE: LF
 
             DOUBLE_QUOTED_STRING: ESCAPED_STRING
 
-            %import common.CNAME
+            %import common.DIGIT
             %import common.ESCAPED_STRING
             %import common.LF
+            %import common.LETTER
             %import common.SIGNED_FLOAT
             %import common.SIGNED_INT
         '''

@@ -1,5 +1,5 @@
 #
-# Copyright (c)      2021 Triad National Security, LLC
+# Copyright (c) 2021-2022 Triad National Security, LLC
 #                         All rights reserved.
 #
 # This file is part of the bueno project. See the LICENSE file at the
@@ -26,22 +26,30 @@ def main(_):
     experiment.name('parse-influxdb-line-proto')
 
     good_names = [
+        'n',
+        '0',
         'name',
-        'a_name',
-        'name_foo0'
+        'a.name',
+        'a-name',
+        'name_foo0',
+        '0_name-foo.0'
     ]
 
     good_tags = [
         None,
-        {'tk0': "tk0"},
-        {'tk0': "tk0", 'tk1': "00", 'tk2': "tv2_longer"},
+        {'0': "tv0"},
+        {'a': "tv0"},
+        {'tk0': "tv0"},
+        {'tk0': "tv0", 'tk1': "00", 'tk2': "tv2_longer.long"}
     ]
 
     good_fields = [
+        {'0': "fv0"},
+        {'a': "fv0"},
         {'fk0': "fv0"},
         {'fk0': "fv0 with spaces"},
         {'fk0': "tk0", 'fk1': 0},
-        {'fk0': "tk0", 'fk1': 0.0, 'fk2': -1.23, 'fk3': 1e-08},
+        {'fk0': "tk.0", 'fk1': 0.0, 'fk2': -1.23, 'fk3': 1e-08},
         {'fk0': True, 'fk1': False and True},
         {'fk0': "\\\"this 'is' fine\\\""}
     ]
@@ -59,7 +67,8 @@ def main(_):
 
     bad_names = [
         '_a_bad_name',
-        '0_a_bad_name'
+        '.a_bad_name',
+        '-a_bad_name'
     ]
 
     for name in bad_names:
