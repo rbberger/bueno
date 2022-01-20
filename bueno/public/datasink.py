@@ -124,7 +124,8 @@ class _InfluxLineProtocolParser():
             name: INFLUX_NAME
 
             tag_key: INFLUX_NAME
-            tag_value: STRING
+            tag_value: CNAME
+                     | SIGNED_INT
 
             field_key: INFLUX_NAME
             field_value: SIGNED_FLOAT
@@ -139,17 +140,16 @@ class _InfluxLineProtocolParser():
             COMMA: ","
             EQUALS: "="
             SPACE: " "
-            INFLUX_NAME: STRING
+            INFLUX_NAME: CNAME
             NEWLINE: LF
-            STRING: /[a-zA-Z0-9_.-]{1,}/
-            SINGLE_QUOTED_STRING: /'[^']*'/
-            DOUBLE_QUOTED_STRING: /"[^"]*"/
-            QUOTED_STRING: SINGLE_QUOTED_STRING
-                         | DOUBLE_QUOTED_STRING
 
+            DOUBLE_QUOTED_STRING: ESCAPED_STRING
+
+            %import common.CNAME
+            %import common.ESCAPED_STRING
             %import common.LF
-            %import common.SIGNED_INT
             %import common.SIGNED_FLOAT
+            %import common.SIGNED_INT
         '''
 
     class _Transformer(lark.Transformer):  # type: ignore

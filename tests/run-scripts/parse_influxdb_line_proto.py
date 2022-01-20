@@ -27,14 +27,14 @@ def main(_):
 
     good_names = [
         'name',
-        '0_name',
-        'name.foo.0'
+        'a_name',
+        'name_foo0'
     ]
 
     good_tags = [
         None,
         {'tk0': "tk0"},
-        {'tk0': "tk0", 'tk1': "00", 'tk2': "tv2-longer"},
+        {'tk0': "tk0", 'tk1': "00", 'tk2': "tv2_longer"},
     ]
 
     good_fields = [
@@ -42,7 +42,8 @@ def main(_):
         {'fk0': "fv0 with spaces"},
         {'fk0': "tk0", 'fk1': 0},
         {'fk0': "tk0", 'fk1': 0.0, 'fk2': -1.23, 'fk3': 1e-08},
-        {'fk0': True, 'fk1': False and True}
+        {'fk0': True, 'fk1': False and True},
+        {'fk0': "\\\"this 'is' fine\\\""}
     ]
 
     for name in good_names:
@@ -58,6 +59,7 @@ def main(_):
 
     bad_names = [
         '_a_bad_name',
+        '0_a_bad_name'
     ]
 
     for name in bad_names:
@@ -131,7 +133,7 @@ def main(_):
                     logger.log(f'BAD: WHY: {exception}\n')
 
     good_vals = [
-        '0_name.foo1 fk0="fv0" 1465839830100400200\n',
+        'a_name_foo1 fk0="fv0" 1465839830100400200\n',
         'name fk0="fv0" 1465839830100400200\n',
         'name fk0="fv0" -1465839830100400200\n',
         'name,tk0=tv0 fk0="fv0" 1465839830100400200\n',
